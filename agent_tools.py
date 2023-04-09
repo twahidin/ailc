@@ -213,7 +213,7 @@ def extract_bing_results(response_data: dict) -> dict:
     displaylink = first_result.get('displayUrl', '')
     #displayUrl = first_result.get('displayUrl', '')
 
-    st.session_state.web_link.append(title)
+    st.session_state.web_link.append(f'Ref No: {st.session_state.s_count} - {title}')
     st.session_state.web_link.append(displaylink)
 
     snippet_1 = first_result.get('snippet', '')
