@@ -8,6 +8,8 @@ import pypdf
 import io
 import os
 import gridfs
+import shutil
+import time
 from pypdf import PdfReader
 from st_aggrid import AgGrid
 import configparser
@@ -15,7 +17,7 @@ import ast
 from bson import ObjectId
 from datetime import datetime
 from data_process import generate_resource
-
+from google.cloud import storage
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -34,8 +36,27 @@ subjects_str = config.get('menu_lists', 'subjects')
 shared_access_str = config.get('menu_lists', 'shared_access')
 subjects = ast.literal_eval(subjects_str)
 shared_access = ast.literal_eval(shared_access_str)
+bucket_name = config['constants']['bucket_name']
+google_application_credentials_json = st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"]
+# Save the JSON key to a temporary file
+with open("temp_key.json", "w") as f:
+    f.write(google_application_credentials_json)
+
+# Set the GOOGLE_APPLICATION_CREDENTIALS environment variable to the temporary file path
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_key.json"
+project_id = os.getenv("GOOGLE_CLOUD_PROJECT") or st.secrets["GOOGLE_CLOUD_PROJECT"]
 
 
+def upload_directory(bucket_name, source_directory, destination_blob_prefix):
+    storage_client = storage.Client(project=project_id)
+    bucket = storage_client.get_bucket(bucket_name)
+    
+    for root, _, files in os.walk(source_directory):
+        for file in files:
+            local_file_path = os.path.join(root, file)
+            blob_name = os.path.join(destination_blob_prefix, os.path.relpath(local_file_path, source_directory))
+            blob = bucket.blob(blob_name)
+            blob.upload_from_filename(local_file_path)
 
 def extract_first_n_words(text, n=200):
 	words = text.split()
@@ -171,6 +192,21 @@ def upload_resource():
 				# Insert the document data into the MongoDB collection
 				doc_collection.insert_one(document_data)
 				st.success("Document uploaded successfully!")
+				st.info(generate_resource(st.session_state.vta_code, st.session_state.admin_key))
+				now = datetime.now()
+				db_description = "Relevant resources and materials shared by your class teacher to enhance your learning experience and deepen your understanding of the subject."
+				formatted_now = now.strftime("%d/%m/%Y %H:%M:%S")
+				user_info_collection.update_one(
+					{"tch_code": st.session_state.vta_code},
+					{"$set": {"db_last_created": formatted_now, "db_description": db_description, "db_subject": subject}}
+				)
+				st.session_state.generate_key = False
+				st.success("Database generated successfully. Please click dashboard to refresh")
+				time.sleep(3)
+				directory_path = os.path.join(os.getcwd(), st.session_state.vta_code)
+				if os.path.exists(directory_path):
+					upload_directory(bucket_name, directory_path, st.session_state.vta_code)
+
 
 
 
@@ -178,9 +214,10 @@ def include_document_for_class_resource(tch_code, doc_collection):
 	with st.form(key="include_resource_form"):
 	# Ask the teacher to input a document ID
 		document_id = st.text_input("Please enter the Document ID you would like to include for the class resources: ")
-
-		
+		# Create a text input for subject
+		subject = st.selectbox("Enter the subject for your collated database:", options=subjects)
 		submit_button = st.form_submit_button("Include Resource")
+		
 
 		# Handle form submission
 		if submit_button:
@@ -214,54 +251,83 @@ def include_document_for_class_resource(tch_code, doc_collection):
 				doc_collection.insert_one(copied_document)
 
 				st.success("Document successfully included for the class resources.")
+				st.info(generate_resource(st.session_state.vta_code, st.session_state.admin_key))
+				now = datetime.now()
+				db_description = "Relevant resources and materials shared by your class teacher to enhance your learning experience and deepen your understanding of the subject."
+				formatted_now = now.strftime("%d/%m/%Y %H:%M:%S")
+				user_info_collection.update_one(
+					{"tch_code": st.session_state.vta_code},
+					{"$set": {"db_last_created": formatted_now, "db_description": db_description, "db_subject": subject}}
+				)
+				st.session_state.generate_key = False
+				st.success("Database generated successfully. Please click dashboard to refresh")
+				time.sleep(3)
+				directory_path = os.path.join(os.getcwd(), st.session_state.vta_code)
+				if os.path.exists(directory_path):
+					upload_directory(bucket_name, directory_path, st.session_state.vta_code)
 			else:
 				st.error("Document not found or not a shared resource.")
+
 
 
 def check_directory_exists():
 	if 'admin_key' not in st.session_state:
 		st.session_state.admin_key = False 
 
-	with st.form(key="Check Directory and Generate Database"):
-		directory_path = os.path.join(os.getcwd(), st.session_state.vta_code)
+	directory_path = os.path.join(os.getcwd(), st.session_state.vta_code)
 
-		if os.path.exists(directory_path):
-			user_info = user_info_collection.find_one({"tch_code": st.session_state.vta_code})
+	if os.path.exists(directory_path):
+		user_info = user_info_collection.find_one({"tch_code": st.session_state.vta_code})
 
-			if user_info and "db_last_created" in user_info:
-				st.success(f"Document database exists, last created on {user_info['db_last_created']}. Please see the information below for your current database")
+		if user_info and "db_last_created" in user_info:
+			# st.success(f"Document database exists, last created on {user_info['db_last_created']}. Please see the information below:")
 			if "db_subject" in user_info and "db_description" in user_info:
-			   st.write(f'Database Subject: {user_info["db_subject"]}')
-			   st.write(f'Database Subject: {user_info["db_description"]}')
+			   st.info(f"""Document database exists, last created on {user_info['db_last_created']}\n\nDatabase Subject: {user_info["db_subject"]}\n\nDatabase Description: {user_info["db_description"]}""")
+			   
+
 			else:
 				st.warning("Database exists, but subject and description not found in the database")
 
-		else:
-			st.write("No document database is created.")
+	else:
+		st.error("No document database is created. Please upload a document or include a new doucment to generate a new database")
+		documents = list(doc_collection.find({"tch_code": st.session_state.vta_code}, {'file_id': 0}))
+		if len(documents) > 0:
+			with st.form(key="generate_db"):
+				st.write("You have existing documents, please generate a database for your students to access your curated resources")
+				db_subject = st.selectbox("Select the subject", options=subjects)
+				generate_button = st.form_submit_button("Generate Database")
+				if generate_button:
+					db_description = f"Relevant resources and materials shared by your class teacher to enhance your learning experience and deepen your understanding of the {db_subject}."
+					now = datetime.now()
+					formatted_now = now.strftime("%d/%m/%Y %H:%M:%S")
+					st.info(generate_resource(st.session_state.vta_code, st.session_state.admin_key))
+					user_info_collection.update_one(
+						{"tch_code": st.session_state.vta_code},
+						{"$set": {"db_last_created": formatted_now, "db_description": db_description, "db_subject": db_subject}}
+					)
+					directory_path = os.path.join(os.getcwd(), st.session_state.vta_code)
+					if os.path.exists(directory_path):
+						upload_directory(bucket_name, directory_path, st.session_state.vta_code)
 
-		st.info("Please regenerate a new database if you have remove or add document resources above")
-		# Add inputs for description and topic
-		db_description = st.text_input("Enter a description for the database (max 100 characters, example given):", max_chars=100, value="Relevant resources and materials shared by your class teacher to enhance your learning experience and deepen your understanding of the subject.")
-		db_subject = st.selectbox("Select the subject", options=subjects)
 
-		generate_button = st.form_submit_button("Generate Database")
+def delete_directory(directory):
+	try:
+		shutil.rmtree(directory)
+		st.success(f'Successfully deleted the directory "{directory}".')
+	except FileNotFoundError:
+		st.error(f'Directory "{directory}" not found.')
 
-		if generate_button:
-			if db_description and db_subject:
-				generate_resource(st.session_state.vta_code, st.session_state.admin_key)
-				now = datetime.now()
-				formatted_now = now.strftime("%d/%m/%Y %H:%M:%S")
-				user_info_collection.update_one(
-					{"tch_code": st.session_state.vta_code},
-					{"$set": {"db_last_created": formatted_now, "db_description": db_description, "db_subject": db_subject}}
-				)
-				st.success("Database generated successfully. Please click dashboard to refresh")
-				return False
-			else:
-				st.warning("Please provide both a description and a topic.")
-
+def delete_blob(bucket_name, blob_name):
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(bucket_name)
+    blob = bucket.blob(blob_name)
+    blob.delete()
 
 def dashboard():
+	if 'generate_key' not in st.session_state:
+		st.session_state.generate_key = False
+	if 'zero_docs' not in st.session_state:
+		st.session_state.zero_docs = False  
 
 	col1, col2 = st.columns([2,2])
 	with col1:
@@ -320,7 +386,9 @@ def dashboard():
 			documents = list(doc_collection.find({"tch_code": st.session_state.vta_code}, {'file_id': 0}))
 			if len(documents) == 0:
 				st.info("No documents found.")
+				st.session_state.zero_docs = True
 			else:
+				st.session_state.zero_docs = False
 				# Create a DataFrame from the documents
 				r_df = pd.DataFrame(documents)
 
@@ -329,29 +397,65 @@ def dashboard():
 
 				# Rename the _id column to 'Document ID'
 				r_df = r_df.rename(columns={'_id': 'Document ID'})
-				AgGrid(r_df, height='400px',key="class_resources")
+				AgGrid(r_df, height='200px',key="class_resources")
 		except Exception as e:
 			st.write(f"Error: {e}")
 			return False
-
-		st.warning(f"IMPORTANT: After uploading or adding shared documents, please generate your document database for your students to access!")
 		check_directory_exists()
+		#documents = list(doc_collection.find({"tch_code": st.session_state.vta_code}, {'file_id': 0}))
+		if st.session_state.zero_docs != True:
+			st.warning("Delete a document resource")
+			with st.form(key="delete_form"):
+				# Create a text input for the document ID
+				
+				document_id = st.text_input("Enter the Document ID (copy paste)to delete your resource:")
+				st.error("You are about to delete the above resource! To proceed please click the delete button")
+				# Create a submit button
+				submit_button = st.form_submit_button("Delete")
 
-		st.error("Delete a document resource")
-		with st.form(key="delete_form"):
-			# Create a text input for the document ID
-			
-			document_id = st.text_input("Enter the Document ID (copy paste)to delete your resource:")
-			st.error("You are about to delete the above resource! To proceed please click the delete button")
-			# Create a submit button
-			submit_button = st.form_submit_button("Delete")
+				# Handle form submission
+				if submit_button:
+					if delete_document_by_id_with_file(document_id):
+						st.success(f"Document with ID '{document_id}' deleted successfully.(Click Dashboard to refresh)")
+						st.session_state.generate_key = True
+					else:
+						st.warning(f"Failed to delete document with ID '{document_id}'.")
+		if st.session_state.generate_key:
+			documents = list(doc_collection.find({"tch_code": st.session_state.vta_code}, {'file_id': 0}))
+			if len(documents) > 0:
+				with st.form(key="generate_db"):
+					st.warning("Changes in your resources, please generate a new database for your students to access your existing resources")
+					db_subject = st.selectbox("Select the subject", options=subjects)
+					generate_button = st.form_submit_button("Generate Database")
+					if generate_button:
+						db_description = f"Relevant resources and materials shared by your class teacher to enhance your learning experience and deepen your understanding of the {db_subject}."
+						now = datetime.now()
+						formatted_now = now.strftime("%d/%m/%Y %H:%M:%S")
+						st.info(generate_resource(st.session_state.vta_code, st.session_state.admin_key))
+						user_info_collection.update_one(
+							{"tch_code": st.session_state.vta_code},
+							{"$set": {"db_last_created": formatted_now, "db_description": db_description, "db_subject": db_subject}}
+						)
+						st.session_state.generate_key = False
+						time.sleep(3)
+						directory_path = os.path.join(os.getcwd(), st.session_state.vta_code)
+						if os.path.exists(directory_path):
+							upload_directory(bucket_name, directory_path, st.session_state.vta_code)
+			else:
+				with st.form(key="delete_db"):
+					st.write("You do not have any more documents in your resources, would you like to delete your existing directory")
+					delete_confirmation = st.checkbox(f"Yes I want to delete the {st.session_state.vta_code} database")
+					submit_button = st.form_submit_button("Submit")
 
-			# Handle form submission
-			if submit_button:
-				if delete_document_by_id_with_file(document_id):
-					st.success(f"Document with ID '{document_id}' deleted successfully.(Click Dashboard to refresh)")
-				else:
-					st.warning(f"Failed to delete document with ID '{document_id}'.")
+					if submit_button and delete_confirmation:
+						delete_directory(st.session_state.vta_code)
+						delete_blob(bucket_name, st.session_state.vta_code)
+						st.session_state.generate_key = False
+						st.session_state.zero_docs = True
+
+
+	
+
 
 
 

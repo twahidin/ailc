@@ -27,8 +27,6 @@ config = configparser.ConfigParser()
 config.read('config.ini')
 db_host = st.secrets["db_host"]
 #db_host = config['constants']['db_host']
-serper_key = st.secrets["serpapi"]
-#serper_key = config['constants']['serpapi']
 db_client = config['constants']['db_client']
 client = pymongo.MongoClient(db_host, tlsCAFile=certifi.where())
 db = client[db_client]
@@ -36,15 +34,24 @@ data_collection = db[config['constants']['sd']]
 user_info_collection = db[config['constants']['ui']]
 st.set_page_config(layout="wide")
 
+#chergpt bot and agent
 c_agent = "chergpt_agent"
+cb_bot = "chergpt_bot"
+#ailc bot and agent
 ag_agent = "ailc_agent_google"
 ab_agent = "ailc_agent_bing"
+abm_agent = "ailc_agent_bing_metacog"
 ar_agent = "ailc_resource_agent"
-s_agent = "sourcefinder_agent"
-mr_agent = "metacog_resource_agent"
+arm_agent = "ailc_resource_agent_metacog"
 ar_bot = "ailc_resource_bot"
+arm_bot = "ailc_resource_bot_metacog"
+#sourcefinder bot and agent
+s_bot = "sourcefinder_bot"
+s_agent = "sourcefinder_agent"
+#metacog bot and agent
 m_bot = "metacog_bot"
 mr_bot = "metacog_resource_bot"
+mr_agent = "metacog_resource_agent"
 
 def main():
 	
@@ -77,9 +84,11 @@ def main():
 		}
 
 
-	#st.title("✎ Metacognition prototype")
-	st.title("🗣️ GPT3.5/4 Dialogic Agent prototype")
+	#st.title("✎ Metacognition prototype V1.1")
+	st.title("GPT3.5/4 Dialogic Agent prototype V1.1")
 	#st.title("✎ CherGpt - Virtual Learning Assistant (Beta V2)")
+	#st.title("Sourcefinder prototype")
+
 
 	student_tabs_str = config.get('menu_lists', 'student_tabs')
 	student_tabs = ast.literal_eval(student_tabs_str)
@@ -148,7 +157,7 @@ def main():
 		description="Analyse and access your class conversation data",
 		color_name="yellow-70",
 		)
-		if st.session_state.bot_key == ag_agent or st.session_state.bot_key == ab_agent:
+		if st.session_state.bot_key == ag_agent or st.session_state.bot_key == ab_agent or st.session_state.bot_key == abm_agent:
 			dashboard_da()
 		else:
 			dashboard()
