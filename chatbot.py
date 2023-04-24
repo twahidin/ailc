@@ -184,7 +184,7 @@ def write_local_db_date(file_path, date_str):
 def load_documents():
 	try:
 		user_info = user_info_collection.find_one({"tch_code": st.session_state.teacher_key})
-		if user_info:
+		if user_info and "db_last_created" in user_info: 
 			if "db_subject" in user_info and "db_description" in user_info:
 				st.session_state.doc_tools_names = {"subject": user_info["db_subject"], "description": user_info["db_description"]}
 				st.success('Teacher documents loaded.')
