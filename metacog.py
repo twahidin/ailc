@@ -85,7 +85,6 @@ def summarizer():
 	return llm_chain.predict(conversation=st.session_state.summary_points)
 
 
-@st.cache_resource
 def metacog_bot():
 	st.session_state.metacog_flag = True
 	
@@ -162,7 +161,6 @@ def load_instance_index(_tch_code):
 
 	return vectordb
 
-@st.cache_resource
 def metacog_resources_bot(_query): #not in use for now 
 	st.session_state.metacog_flag = True
 
