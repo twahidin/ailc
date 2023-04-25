@@ -85,7 +85,7 @@ def main():
 
 
 	#st.title("✎ Metacognition prototype V1.1")
-	st.title("GPT3.5/4 Dialogic Agent prototype V1.1")
+	st.title("Dialogic Agent prototype V1.1")
 	#st.title("✎ CherGpt - Virtual Learning Assistant (Beta V2)")
 	#st.title("Sourcefinder prototype")
 
