@@ -170,7 +170,7 @@ def load_instance_index(_tch_code):
 
 	return vectordb
 	
-@st.cache_resource
+
 def ailc_resources_bot(_query): #not in use for now 
 	if 'chat_history' not in st.session_state:
 		st.session_state.chat_history = []
