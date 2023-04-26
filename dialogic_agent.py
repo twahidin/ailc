@@ -211,12 +211,6 @@ def ailc_resources_bot(_query): #not in use for now
 	return result
 
 
-@st.cache_resource
-def load_instance_index(_tch_code):
-	embeddings = OpenAIEmbeddings()
-	vectordb = FAISS.load_local(_tch_code, embeddings)
-
-	return vectordb
 
 
 
