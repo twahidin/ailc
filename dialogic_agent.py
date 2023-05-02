@@ -28,6 +28,8 @@ def ailc_agent_serp():
 	if 'memory_state' not in st.session_state:
 		st.session_state.memory_state = None
 
+	st.session_state.memory_state = ConversationBufferWindowMemory(memory_key="chat_history", k=7, return_messages=True)
+
 	os.environ["OPENAI_API_KEY"] = st.session_state.api_key
 	os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -44,12 +46,12 @@ def ailc_agent_serp():
 				)
  
 	tools = [
-		# Tool(
-		# name="Wikipedia_to_JSON_String",
-		# func=wikipedia_to_json_string,
-		# description="A tool to search for a query on Wikipedia and return the search results with their URLs and summaries as a JSON formatted string. The input to this tool should be a query.",
-		# #return_direct=True
-		# ),
+		Tool(
+		name="Wikipedia_to_JSON_String",
+		func=wikipedia_to_json_string,
+		description="A tool to search for a query on Wikipedia and return the search results with their URLs and summaries as a JSON formatted string. The input to this tool should be a query.",
+		#return_direct=True
+		),
 		Tool(
 		name = "Google Search Results",
 		func=google_search_serp,
@@ -58,7 +60,7 @@ def ailc_agent_serp():
 		),
 	]
 
-	st.session_state.memory_state = ConversationBufferWindowMemory(memory_key="chat_history", k=7, return_messages=True)
+	
 
 	agent_chain = initialize_agent(tools, llm, agent="chat-conversational-react-description", verbose=True, memory=st.session_state.memory_state)
 	
@@ -69,6 +71,8 @@ def ailc_agent_bing():
 	
 	if 'memory_state' not in st.session_state:
 		st.session_state.memory_state = None
+
+	st.session_state.memory_state = ConversationBufferWindowMemory(memory_key="chat_history", k=7, return_messages=True)
 
 	os.environ["OPENAI_API_KEY"] = st.session_state.api_key
 	os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
@@ -86,12 +90,12 @@ def ailc_agent_bing():
 				)
 
 	tools = [
-		# Tool(
-		# name="Wikipedia_to_JSON_String",
-		# func=wikipedia_to_json_string,
-		# description="A tool to search for a query on Wikipedia and return the search results with their URLs and summaries as a JSON formatted string. The input to this tool should be a query.",
-		# #return_direct=True
-		# ),
+		Tool(
+		name="Wikipedia_to_JSON_String",
+		func=wikipedia_to_json_string,
+		description="A tool to search for a query on Wikipedia and return the search results with their URLs and summaries as a JSON formatted string. The input to this tool should be a query.",
+		#return_direct=True
+		),
 		Tool(
 		name = "Bing Search Results",
 		func=bing_search_internet,
@@ -100,7 +104,6 @@ def ailc_agent_bing():
 		),
 	]
 
-	st.session_state.memory_state = ConversationBufferWindowMemory(memory_key="chat_history", k=7, return_messages=True)
 
 	agent_chain = initialize_agent(tools, llm, agent="chat-conversational-react-description", verbose=True, memory=st.session_state.memory_state)
 	
@@ -112,6 +115,8 @@ def ailc_resource_agent():
 
 	if 'memory_state' not in st.session_state:
 		st.session_state.memory_state = None
+
+	st.session_state.memory_state = ConversationBufferWindowMemory(memory_key="chat_history", k=7, return_messages=True)
 
 	os.environ["OPENAI_API_KEY"] = st.session_state.api_key
 	os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
@@ -156,7 +161,7 @@ def ailc_resource_agent():
 				),
 			   ]
 
-	st.session_state.memory_state = ConversationBufferWindowMemory(memory_key="chat_history", k=7, return_messages=True)
+	
 
 	agent_chain = initialize_agent(tools, llm, agent="chat-conversational-react-description", verbose=True, memory=st.session_state.memory_state)
 	
