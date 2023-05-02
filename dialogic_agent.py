@@ -44,12 +44,12 @@ def ailc_agent_serp():
 				)
  
 	tools = [
-		Tool(
-		name="Wikipedia_to_JSON_String",
-		func=wikipedia_to_json_string,
-		description="A tool to search for a query on Wikipedia and return the search results with their URLs and summaries as a JSON formatted string. The input to this tool should be a query.",
-		#return_direct=True
-		),
+		# Tool(
+		# name="Wikipedia_to_JSON_String",
+		# func=wikipedia_to_json_string,
+		# description="A tool to search for a query on Wikipedia and return the search results with their URLs and summaries as a JSON formatted string. The input to this tool should be a query.",
+		# #return_direct=True
+		# ),
 		Tool(
 		name = "Google Search Results",
 		func=google_search_serp,
@@ -86,12 +86,12 @@ def ailc_agent_bing():
 				)
 
 	tools = [
-		Tool(
-		name="Wikipedia_to_JSON_String",
-		func=wikipedia_to_json_string,
-		description="A tool to search for a query on Wikipedia and return the search results with their URLs and summaries as a JSON formatted string. The input to this tool should be a query.",
-		#return_direct=True
-		),
+		# Tool(
+		# name="Wikipedia_to_JSON_String",
+		# func=wikipedia_to_json_string,
+		# description="A tool to search for a query on Wikipedia and return the search results with their URLs and summaries as a JSON formatted string. The input to this tool should be a query.",
+		# #return_direct=True
+		# ),
 		Tool(
 		name = "Bing Search Results",
 		func=bing_search_internet,
@@ -211,6 +211,12 @@ def ailc_resources_bot(_query): #not in use for now
 	return result
 
 
+@st.cache_resource
+def load_instance_index(_tch_code):
+	embeddings = OpenAIEmbeddings()
+	vectordb = FAISS.load_local(_tch_code, embeddings)
+
+	return vectordb
 
 
 
