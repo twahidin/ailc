@@ -40,11 +40,8 @@ cb_bot = "chergpt_bot"
 #ailc bot and agent
 ag_agent = "ailc_agent_google"
 ab_agent = "ailc_agent_bing"
-abm_agent = "ailc_agent_bing_metacog"
 ar_agent = "ailc_resource_agent"
-arm_agent = "ailc_resource_agent_metacog"
 ar_bot = "ailc_resource_bot"
-arm_bot = "ailc_resource_bot_metacog"
 #sourcefinder bot and agent
 s_bot = "sourcefinder_bot"
 s_agent = "sourcefinder_agent"
@@ -85,7 +82,7 @@ def main():
 
 
 	#st.title("✎ Metacognition prototype V1.1")
-	st.title("Dialogic Agent prototype V1.1")
+	st.title("GPT3.5/4 Dialogic Agent prototype V1.2")
 	#st.title("✎ CherGpt - Virtual Learning Assistant (Beta V2)")
 	#st.title("Sourcefinder prototype")
 
@@ -125,6 +122,10 @@ def main():
 						"nav-link-selected": {"background-color": "black"},
 				}
 			)
+
+		#tabs = st.selectbox("Select menu option", tab_names)
+
+
 	if tabs =='Login':
 		colored_header(
 		label="Students and Teachers Login page",
@@ -157,7 +158,7 @@ def main():
 		description="Analyse and access your class conversation data",
 		color_name="yellow-70",
 		)
-		if st.session_state.bot_key == ag_agent or st.session_state.bot_key == ab_agent or st.session_state.bot_key == abm_agent:
+		if st.session_state.bot_key == ag_agent or st.session_state.bot_key == ab_agent:
 			dashboard_da()
 		else:
 			dashboard()

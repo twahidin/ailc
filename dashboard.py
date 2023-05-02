@@ -9,6 +9,7 @@ import io
 import os
 import gridfs
 import shutil
+import csv
 import time
 from pypdf import PdfReader
 from st_aggrid import AgGrid
@@ -40,23 +41,60 @@ bucket_name = config['constants']['bucket_name']
 google_application_credentials_json = st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"]
 # Save the JSON key to a temporary file
 with open("temp_key.json", "w") as f:
-    f.write(google_application_credentials_json)
+	f.write(google_application_credentials_json)
 
 # Set the GOOGLE_APPLICATION_CREDENTIALS environment variable to the temporary file path
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_key.json"
 project_id = os.getenv("GOOGLE_CLOUD_PROJECT") or st.secrets["GOOGLE_CLOUD_PROJECT"]
 
 
+def download_csv(): #downloading of conversational data
+	user_info = user_info_collection.find_one({"tch_code": st.session_state.vta_code})
+	#st.write(user_info)
+	if user_info:
+		# Step 3: Get all the codes from vta_code1 to vta_code45
+		codes = [user_info[f"vta_code{i}"] for i in range(1, 46) if f"vta_code{i}" in user_info]
+		#st.write(codes)
+
+		# Step 4: Query the data_collection to get all the documents containing any of the codes
+		documents = data_collection.find({"vta_code": {"$in": codes}})
+		#st.write(documents)
+		# Write the documents to a CSV file
+		filename = 'all_records.csv'
+		with open(filename, "w", newline="") as csvfile:
+			fieldnames = documents[0].keys()
+			writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+			writer.writeheader()
+			for document in documents:
+				writer.writerow(document)
+
+		# Check if the file was written successfully
+		try:
+			with open(filename, "r") as file:
+				data_csv = file.read()
+		except:
+			st.error("Failed to export records, please try again")
+		else:
+			st.success("File is ready for downloading")
+			st.download_button(
+				label="Download class data as CSV",
+				data=data_csv,
+				file_name=filename,
+				mime='text/csv',
+			)
+
+
 def upload_directory(bucket_name, source_directory, destination_blob_prefix):
-    storage_client = storage.Client(project=project_id)
-    bucket = storage_client.get_bucket(bucket_name)
-    
-    for root, _, files in os.walk(source_directory):
-        for file in files:
-            local_file_path = os.path.join(root, file)
-            blob_name = os.path.join(destination_blob_prefix, os.path.relpath(local_file_path, source_directory))
-            blob = bucket.blob(blob_name)
-            blob.upload_from_filename(local_file_path)
+	storage_client = storage.Client(project=project_id)
+	bucket = storage_client.get_bucket(bucket_name)
+	
+	for root, _, files in os.walk(source_directory):
+		for file in files:
+			local_file_path = os.path.join(root, file)
+			blob_name = os.path.join(destination_blob_prefix, os.path.relpath(local_file_path, source_directory))
+			blob = bucket.blob(blob_name)
+			blob.upload_from_filename(local_file_path)
 
 def extract_first_n_words(text, n=200):
 	words = text.split()
@@ -318,10 +356,10 @@ def delete_directory(directory):
 		st.error(f'Directory "{directory}" not found.')
 
 def delete_blob(bucket_name, blob_name):
-    storage_client = storage.Client()
-    bucket = storage_client.get_bucket(bucket_name)
-    blob = bucket.blob(blob_name)
-    blob.delete()
+	storage_client = storage.Client()
+	bucket = storage_client.get_bucket(bucket_name)
+	blob = bucket.blob(blob_name)
+	blob.delete()
 
 def dashboard():
 	if 'generate_key' not in st.session_state:
@@ -344,6 +382,7 @@ def dashboard():
 		except Exception as e:
 			st.write(f"Error: {e}")
 			return False
+		download_csv()
 
 	with col2:
 		# ["Shared resource","School resource", "Class resource"]
