@@ -24,7 +24,7 @@ if 'vta_key' not in st.session_state:
 	st.session_state.vta_key = False
 
 if 'api_key' not in st.session_state:
-	st.session_state.api_key = False
+	st.session_state.api_key = st.secrets["openapi_key"]
 
 if 'codes_key' not in st.session_state:
 	st.session_state.codes_key = False    

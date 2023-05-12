@@ -70,7 +70,8 @@ def get_wikipedia_data(query, max_results=4):
 					}
 					st.session_state.related_questions.append(question_info)
 			except Exception as e:
-				st.warning(f"Unable to find Wikipedia resources for {result}: {str(e)}")
+				st.spinner(text="Search in progress...")
+				#st.warning(f"Unable to find Wikipedia resources for {result}: {str(e)}")
 
 		data = {
 			"query": query,
@@ -96,7 +97,7 @@ def wikipedia_to_json_string(query: str) -> str:
 
 
 
-@tool
+@tool #tool not in use as there will be a button to consolidate learning - function will be deprecated
 def change_or_end_of_topic(human_input: str) -> str:
 	"""
 	This Change or End of Topic teacher role will engage the human when the human wants to end the topic 

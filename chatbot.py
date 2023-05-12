@@ -14,16 +14,17 @@ from dialogic_agent import (
 							ailc_resources_bot,
 							ailc_resource_agent, 
 							)
-from metacog import (
-					metacog_bot, 
-					metacog_resources_bot, 
-					metacog_agent,
-					summarizer
-					)
+# from metacog import (
+# 					metacog_bot, 
+# 					metacog_resources_bot, 
+# 					metacog_agent,
+# 					summarizer,
+# 					metacog_prompt
+# 					)
 
-from sourcefinder import sourcefinder_agent, sourcefinder_bot
-from chergpt import chergpt_agent, chergpt_bot, chergpt_agent_4
-from mapping import generate_mind_map
+# from sourcefinder import sourcefinder_agent, sourcefinder_bot
+# from chergpt import chergpt_agent, chergpt_bot #, chergpt_grail_bot
+#from data_process import generate_drive_data
 from langchain.embeddings.openai import OpenAIEmbeddings
 from streamlit_extras.stoggle import stoggle
 import json
@@ -43,18 +44,22 @@ user_info_collection = db[config['constants']['ui']]
 #default conversation table 
 CB = config['constants']['CB']
 CL = config['constants']['CL']
+SM = config['constants']['SM']
+
 bucket_name = config['constants']['bucket_name']
 google_application_credentials_json = st.secrets["GOOGLE_APPLICATION_CREDENTIALS_JSON"]
-# Save the JSON key to a temporary file
-with open("temp_key.json", "w") as f:
+#Save the JSON key to a temporary file
+with open("temp_key.json", "w") as f: 
 	f.write(google_application_credentials_json)
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_key.json"
 project_id = os.getenv("GOOGLE_CLOUD_PROJECT") or st.secrets["GOOGLE_CLOUD_PROJECT"]
+#os.remove("temp_key.json")
+
 
 #chergpt bot and agent
 c_agent = "chergpt_agent"
-c4_agent = "chergpt_agent_4"
 cb_bot = "chergpt_bot"
+cb_grail = "chergpt_grail_bot"
 #ailc bot and agent
 ag_agent = "ailc_agent_google"
 ab_agent = "ailc_agent_bing"
@@ -87,7 +92,20 @@ def main_bot():
 		st.session_state["temp"] = ""
 
 	if 'document_exist' not in st.session_state:
-		st.session_state.document_exist = load_documents()
+		if st.session_state.bot_key == cb_grail:
+			holy_grail = "holy_grail_drive"
+			directory_path = os.path.join(os.getcwd(), holy_grail)
+			if os.path.exists(directory_path):
+				st.session_state.document_exist = True
+			else:
+				try:
+					generate_drive_data()
+					st.session_state.document_exist = True
+				except Exception as e:
+					st.error(e)
+					st.session_state.document_exist = False
+		else:
+			st.session_state.document_exist = load_documents()
 
 	if 'data_source' not in st.session_state:
 		st.session_state.data_source = None 
@@ -117,10 +135,11 @@ def main_bot():
 		st.session_state.summary_points = ''
 
 	if 'consolidate_learning' not in st.session_state:
-		st.session_state.consolidate_learning = "Click on Consolidate my learning"
+		st.session_state.consolidate_learning = "Pending student reflection"
 
 	if 'metacog_flag' not in st.session_state:
 		st.session_state.metacog_flag = False
+
 
 
 	c1,c2 = st.columns([5,3])
@@ -133,18 +152,14 @@ def main_bot():
 				if result != False:
 					question, answer = result
 					now = datetime.now()
-					if st.session_state.consolidate == False:
-						data_collection.insert_one({"vta_code": st.session_state.vta_code, "function":CB,"question": question, "response": answer, "created_at": now.strftime("%d/%m/%Y %H:%M:%S")})
-					else:
-						data_collection.insert_one({"vta_code": st.session_state.vta_code, "function":CL,"question": question, "response": answer, "created_at": now.strftime("%d/%m/%Y %H:%M:%S")})
-						st.session_state.consolidate = False
-			if st.session_state.consolidate == True:
-				st.session_state.consolidate_learning = summarizer()
+					data_collection.insert_one({"vta_code": st.session_state.vta_code, "function":CB,"question": question, "response": answer, "created_at": now.strftime("%d/%m/%Y %H:%M:%S")})
 			st.session_state["temp"] = st.text_input("Enter your question", key="text", on_change=clear_text)
 			c3, c4, c5 = st.columns([2,2,2])
 			with c3:
-				if st.session_state.metacog_flag == True:
-					if st.button("Consolidate my learning", on_click=consolidate):
+				#st.write(st.session_state.metacog_flag)
+				#st.write(st.session_state.chat_history)
+				if st.session_state.metacog_flag == True and st.session_state.chat_history != []:
+					if st.button("I learnt something new!", on_click=metacogs):
 						pass
 			with c4:
 				#if st.session_state.metacog_flag == True:
@@ -157,9 +172,35 @@ def main_bot():
 		try:
 			st.info("Learning Log")
 			if st.session_state.metacog_flag == True:
-				st.write(st.session_state.consolidate_learning)
+				placeholder1 = st.empty()
+				if st.session_state.consolidate == True:
+					with placeholder1:
+						with st.form("Metacognition Prompts"):
+							st.write(st.session_state.consolidate_learning)
+							#if flag is true, reveal button and get student input 
+							reflection = st.text_area("Student reflection:", height=20, max_chars=100)
+							submitted = st.form_submit_button("Submit Reflection")
+							if submitted:
+								if reflection != "":
+									now = datetime.now()
+									data_collection.insert_one({"vta_code": st.session_state.vta_code, "function":CL,"question": reflection, "response": st.session_state.consolidate_learning, "created_at": now.strftime("%d/%m/%Y %H:%M:%S")})
+									st.session_state.consolidate_learning = summarizer()
+									data_collection.insert_one({"vta_code": st.session_state.vta_code, "function":SM,"question": "Summarised Points", "response": st.session_state.consolidate_learning, "created_at": now.strftime("%d/%m/%Y %H:%M:%S")})
+									#st.session_state.consolidate = False
+									st.session_state.consolidate_learning = "Student Reflection \n\n" + reflection + "\n\n" + st.session_state.consolidate_learning
+									placeholder1.empty()
+								else:
+									st.write("Please enter a reflection")
+					if st.session_state.consolidate == False:
+						st.write(st.session_state.consolidate_learning)
+				elif st.session_state.consolidate == False:
+					st.write(st.session_state.consolidate_learning)
+
+				# update mongodb with student input and question
+				# if student enter, then generate the summary points and learning areas 
+
 			else:
-				st.write("Learning summary not available")
+				st.write("Learning summary function not available")
 			st.success("Related Questions & Information")
 			show_related_links()
 			st.warning("Links and Information")
@@ -169,8 +210,8 @@ def main_bot():
 			return False
 
 
-def map_learning():
-	st.session_state["temp"] = generate_mind_map()
+# def map_learning():
+# 	st.session_state["temp"] = generate_mind_map()
 
 def read_local_db_date(file_path):
 	with open(file_path, "r") as f:
@@ -185,6 +226,7 @@ def load_documents():
 	try:
 		user_info = user_info_collection.find_one({"tch_code": st.session_state.teacher_key})
 		if user_info and "db_last_created" in user_info: 
+
 			if "db_subject" in user_info and "db_description" in user_info:
 				st.session_state.doc_tools_names = {"subject": user_info["db_subject"], "description": user_info["db_description"]}
 				st.success('Teacher documents loaded.')
@@ -195,7 +237,9 @@ def load_documents():
 
 			if os.path.exists(directory_path) and os.path.exists(local_date_file_path):
 				local_date = read_local_db_date(local_date_file_path)
+				#st.write(local_date)
 				remote_date = datetime.strptime(remote_date_str, "%d/%m/%Y %H:%M:%S")
+				#st.write(remote_date)
 				
 				if remote_date > local_date:
 					download_directory(bucket_name, st.session_state.teacher_key, directory_path)
@@ -278,8 +322,13 @@ def clear_text():
 
 
 def consolidate():
-	st.session_state["temp"] = """Thank you. I would like to end my discussion and move on to a new topic"""
+	#st.session_state["temp"] = """Thank you. I would like to end my discussion and move on to a new topic"""
 	st.session_state.consolidate_learning = summarizer()
+
+def metacogs():
+	st.session_state.consolidate_learning = metacog_prompt()
+	st.session_state.consolidate = True
+
 	
 
 def process_dialougic_agent(text):
@@ -389,104 +438,98 @@ def chat_history():
 
 def chat_bot(user_input):
 	try:
-		if isinstance(user_input, Image.Image):
-			st.image(user_input, caption="Knowledge Map", use_column_width=True)
-			question = "I would like to generate a Knowlege Map please"
-			answer = user_input
-			colour = "red"
+		
+		if st.session_state.bot_key == cb_bot: #testing with postgres memory ( Google Cloud )
+			if st.session_state.document_exist:
+				st.session_state.tool_use = False
+				st.session_state.source_bot = True
+				answer = chergpt_bot(user_input)
+				answer, colour = process_resource_bot(answer)
+				answer = format_lists(answer)
+			else:
+				st.session_state.bot_key = c_agent
+				pass
+		elif st.session_state.bot_key == cb_grail: #testing with postgres memory ( Google Cloud )
+			if st.session_state.document_exist:
+				st.session_state.tool_use = False
+				st.session_state.source_bot = True
+				answer = chergpt_grail_bot(user_input)
+				answer, colour = process_resource_bot(answer)
+				answer = format_lists(answer)
+			else:
+				st.session_state.bot_key = c_agent
+				pass
+		elif st.session_state.bot_key == ar_bot:
+			if st.session_state.document_exist:
+				st.session_state.tool_use = False
+				st.session_state.source_bot = True
+				answer = ailc_resources_bot(user_input)
+				answer, colour = process_resource_bot(answer)
+			else:
+				st.session_state.bot_key = ar_agent
+				pass
+		elif st.session_state.bot_key == m_bot: #no document 
+			st.session_state.source_bot = True
+			answer = metacog_bot().predict(input=user_input)
+			answer = format_lists(answer)
+			colour = "black"
+		elif st.session_state.bot_key == mr_bot:
+			if st.session_state.document_exist:
+				st.session_state.tool_use = False
+				st.session_state.source_bot = True
+				answer = metacog_resources_bot(user_input)
+				answer, colour = process_resource_bot(answer)
+				answer = format_lists(answer)
+			else:
+				st.session_state.bot_key = mr_agent
+				pass
+		elif st.session_state.bot_key == s_bot:
+			if st.session_state.document_exist:
+				st.session_state.tool_use = False
+				st.session_state.source_bot = True
+				answer = sourcefinder_bot(user_input)
+				answer, colour = process_resource_bot(answer)
+			else:
+				st.session_state.bot_key = s_agent
+				pass
+		elif st.session_state.bot_key == c_agent:
+			st.session_state.tool_use = False
+			ag = chergpt_agent()
+			answer = ag.run(input=user_input)
+			answer, colour = process_dialougic_agent(answer)
+		elif st.session_state.bot_key == ag_agent:
+			st.session_state.tool_use = False
+			ag = ailc_agent_serp()
+			answer = ag.run(input=user_input)
+			answer, colour = process_dialougic_agent(answer)
+		elif st.session_state.bot_key == ab_agent:
+			st.session_state.tool_use = False
+			ag = ailc_agent_bing()
+			answer = ag.run(input=user_input)
+			answer, colour = process_dialougic_agent(answer)
+		elif st.session_state.bot_key == ar_agent:
+			st.session_state.tool_use = False
+			ag = ailc_resource_agent()
+			answer = ag.run(input=user_input)
+			answer, colour = process_dialougic_agent(answer)
+		elif st.session_state.bot_key == mr_agent: #Testing with redis server ( Worked )
+			st.session_state.tool_use = False
+			ag = metacog_agent()
+			answer = ag.run(input=user_input)
+			answer, colour = process_dialougic_agent(answer)
+			answer = format_lists(answer)
+		elif st.session_state.bot_key == s_agent:	#testing with BabyAGI toolset
+			#activate LLM memeory similar to dialougic agent but no metacog answer, uploading of resources is available 
+			st.session_state.tool_use = False
+			ag = sourcefinder_agent()
+			answer = ag.run(input=user_input)
+			answer, colour = process_dialougic_agent(answer)
+		if user_input:
+			question = user_input
+			st.markdown(f'<div style="text-align: left; color: black; font-weight: bold;"> <span style="color: red;">Chatbot 🤖:</span> <span style="color: {colour}; font-weight: normal;">{answer}</span></div>', unsafe_allow_html=True)
+			st.markdown(f'<div style="text-align: right;"><span style="color: black; font-weight: normal;">{question}</span><span style="color: blue;">:😃 User </span></div>', unsafe_allow_html=True) 
 			st.session_state.chat_msg.append({ "question": question, "response": answer, "colour": colour})
 			return question, answer
-		if user_input == "UML snytax not generated, Knowledge Map cannot be generated, try again later":
-			st.error("UML snytax not generated, Knowledge Map cannot be generated, try again later")
-			return False
-		else:
-			if st.session_state.bot_key == cb_bot: #testing with postgres memory ( Google Cloud )
-				if st.session_state.document_exist:
-					st.session_state.tool_use = False
-					st.session_state.source_bot = True
-					answer = chergpt_bot(user_input)
-					answer, colour = process_resource_bot(answer)
-					answer = format_lists(answer)
-				else:
-					st.session_state.bot_key = c_agent
-					pass
-			elif st.session_state.bot_key == ar_bot:
-				if st.session_state.document_exist:
-					st.session_state.tool_use = False
-					st.session_state.source_bot = True
-					answer = ailc_resources_bot(user_input)
-					answer, colour = process_resource_bot(answer)
-				else:
-					st.session_state.bot_key = ar_agent
-					pass
-			elif st.session_state.bot_key == m_bot: #no document 
-				st.session_state.source_bot = True
-				answer = metacog_bot().predict(input=user_input)
-				answer = format_lists(answer)
-				colour = "black"
-			elif st.session_state.bot_key == mr_bot:
-				if st.session_state.document_exist:
-					st.session_state.tool_use = False
-					st.session_state.source_bot = True
-					answer = metacog_resources_bot(user_input)
-					answer, colour = process_resource_bot(answer)
-					answer = format_lists(answer)
-				else:
-					st.session_state.bot_key = mr_agent
-					pass
-			elif st.session_state.bot_key == s_bot:
-				if st.session_state.document_exist:
-					st.session_state.tool_use = False
-					st.session_state.source_bot = True
-					answer = sourcefinder_bot(user_input)
-					answer, colour = process_resource_bot(answer)
-				else:
-					st.session_state.bot_key = s_agent
-					pass
-			elif st.session_state.bot_key == c_agent:
-				st.session_state.tool_use = False
-				ag = chergpt_agent()
-				answer = ag.run(input=user_input)
-				answer, colour = process_dialougic_agent(answer)
-			elif st.session_state.bot_key == c4_agent:
-				st.session_state.tool_use = False
-				ag = chergpt_agent_4()
-				answer = ag.run(input=user_input)
-				answer, colour = process_dialougic_agent(answer)
-				answer = format_lists(answer)
-			elif st.session_state.bot_key == ag_agent:
-				st.session_state.tool_use = False
-				ag = ailc_agent_serp()
-				answer = ag.run(input=user_input)
-				answer, colour = process_dialougic_agent(answer)
-			elif st.session_state.bot_key == ab_agent:
-				st.session_state.tool_use = False
-				ag = ailc_agent_bing()
-				answer = ag.run(input=user_input)
-				answer, colour = process_dialougic_agent(answer)
-			elif st.session_state.bot_key == ar_agent:
-				st.session_state.tool_use = False
-				ag = ailc_resource_agent()
-				answer = ag.run(input=user_input)
-				answer, colour = process_dialougic_agent(answer)
-			elif st.session_state.bot_key == mr_agent: #Testing with redis server ( Worked )
-				st.session_state.tool_use = False
-				ag = metacog_agent()
-				answer = ag.run(input=user_input)
-				answer, colour = process_dialougic_agent(answer)
-				answer = format_lists(answer)
-			elif st.session_state.bot_key == s_agent:	#testing with BabyAGI toolset
-				#activate LLM memeory similar to dialougic agent but no metacog answer, uploading of resources is available 
-				st.session_state.tool_use = False
-				ag = sourcefinder_agent()
-				answer = ag.run(input=user_input)
-				answer, colour = process_dialougic_agent(answer)
-			if user_input:
-				question = user_input
-				st.markdown(f'<div style="text-align: left; color: black; font-weight: bold;"> <span style="color: red;">Chatbot 🤖:</span> <span style="color: {colour}; font-weight: normal;">{answer}</span></div>', unsafe_allow_html=True)
-				st.markdown(f'<div style="text-align: right;"><span style="color: black; font-weight: normal;">{question}</span><span style="color: blue;">:😃 User </span></div>', unsafe_allow_html=True) 
-				st.session_state.chat_msg.append({ "question": question, "response": answer, "colour": colour})
-				return question, answer
 
 	except openai.APIError as e:
 		st.error(e)
@@ -497,8 +540,6 @@ def chat_bot(user_input):
 		st.error(e)
 		return False
 
-
-#======================= default Q&A source bot =======================================================
 
 
 

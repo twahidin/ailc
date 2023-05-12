@@ -1,4 +1,4 @@
-#CherGpt2
+#Dialogiv Agent 1.4
 from streamlit_option_menu import option_menu
 import streamlit as st
 import pymongo
@@ -13,9 +13,7 @@ from dashboard import dashboard
 from dashboard_da import dashboard_da
 from settings import (
 	general_settings, 
-	chatbot_prompt_settings, 
-	upload_json_file,
-	is_admin_or_metacog_user
+	chatbot_prompt_settings
 	)
 
 from chatbot import main_bot
@@ -81,8 +79,8 @@ def main():
 		}
 
 
-	#st.title("✎ Metacognition prototype V1.1")
-	st.title("GPT3.5/4 Dialogic Agent prototype V1.3")
+	#st.title("✎ Metacognition prototype V1.4")
+	st.title("GPT3.5/4 Dialogic Agent prototype V1.4B")
 	#st.title("✎ CherGpt - Virtual Learning Assistant (Beta V2)")
 	#st.title("Sourcefinder prototype")
 
@@ -199,9 +197,7 @@ def main():
 		with col1:
 			general_settings()
 			chatbot_prompt_settings()
-			if is_admin_or_metacog_user() == True:
-				upload_json_file()
-			pass         
+	
 		with col2:
 
 			#class_settings()

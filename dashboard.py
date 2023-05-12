@@ -1,5 +1,4 @@
 
-#Check completed - need to upload pdf to mongodb
 import streamlit as st
 import pandas as pd
 import pymongo
@@ -46,7 +45,7 @@ with open("temp_key.json", "w") as f:
 # Set the GOOGLE_APPLICATION_CREDENTIALS environment variable to the temporary file path
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_key.json"
 project_id = os.getenv("GOOGLE_CLOUD_PROJECT") or st.secrets["GOOGLE_CLOUD_PROJECT"]
-
+os.remove("temp_key.json")
 
 def download_csv(): #downloading of conversational data
 	user_info = user_info_collection.find_one({"tch_code": st.session_state.vta_code})
