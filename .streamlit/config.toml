@@ -1,3 +1,5 @@
-[server]
+[theme]
+base="light"
 
+[server]
 maxUploadSize = 1
