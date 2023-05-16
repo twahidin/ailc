@@ -56,33 +56,35 @@ def download_csv(): #downloading of conversational data
 		#st.write(codes)
 
 		# Step 4: Query the data_collection to get all the documents containing any of the codes
-		documents = data_collection.find({"vta_code": {"$in": codes}})
-		#st.write(documents)
-		# Write the documents to a CSV file
-		filename = 'all_records.csv'
-		with open(filename, "w", newline="") as csvfile:
-			fieldnames = documents[0].keys()
-			writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+		documents = list(data_collection.find({"vta_code": {"$in": codes}}))
 
-			writer.writeheader()
-			for document in documents:
-				writer.writerow(document)
-
-		# Check if the file was written successfully
-		try:
-			with open(filename, "r") as file:
-				data_csv = file.read()
-		except:
-			st.error("Failed to export records, please try again")
+		if not documents:
+			st.warning("No records found for the provided codes.")
 		else:
-			st.success("File is ready for downloading")
-			st.download_button(
-				label="Download class data as CSV",
-				data=data_csv,
-				file_name=filename,
-				mime='text/csv',
-			)
+			# Write the documents to a CSV file
+			filename = 'all_records.csv'
+			with open(filename, "w", newline="") as csvfile:
+				fieldnames = documents[0].keys()
+				writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
+				writer.writeheader()
+				for document in documents:
+					writer.writerow(document)
+
+			# Check if the file was written successfully
+			try:
+				with open(filename, "r") as file:
+					data_csv = file.read()
+			except:
+				st.error("Failed to export records, please try again")
+			else:
+				st.success("File is ready for downloading")
+				st.download_button(
+					label="Download class data as CSV",
+					data=data_csv,
+					file_name=filename,
+					mime='text/csv',
+				)
 
 def upload_directory(bucket_name, source_directory, destination_blob_prefix):
 	storage_client = storage.Client(project=project_id)
