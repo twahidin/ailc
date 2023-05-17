@@ -28,7 +28,7 @@ def ailc_agent_serp():
 	if 'memory_state' not in st.session_state:
 		st.session_state.memory_state = None
 
-	st.session_state.memory_state = ConversationBufferWindowMemory(memory_key="chat_history", k=7, return_messages=True)
+	st.session_state.memory_state = ConversationBufferWindowMemory(memory_key="chat_history", k=4, return_messages=True)
 
 	os.environ["OPENAI_API_KEY"] = st.session_state.api_key
 	os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
@@ -72,7 +72,7 @@ def ailc_agent_bing():
 	if 'memory_state' not in st.session_state:
 		st.session_state.memory_state = None
 
-	st.session_state.memory_state = ConversationBufferWindowMemory(memory_key="chat_history", k=7, return_messages=True)
+	st.session_state.memory_state = ConversationBufferWindowMemory(memory_key="chat_history", k=4, return_messages=True)
 
 	os.environ["OPENAI_API_KEY"] = st.session_state.api_key
 	os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
