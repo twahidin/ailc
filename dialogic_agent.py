@@ -47,15 +47,15 @@ def ailc_agent_serp():
  
 	tools = [
 		Tool(
-		name="Wikipedia_to_JSON_String",
-		func=wikipedia_to_json_string,
-		description="A tool to search for a query on Wikipedia and return the search results with their URLs and summaries as a JSON formatted string. The input to this tool should be a query.",
-		#return_direct=True
-		),
-		Tool(
 		name = "Google Search Results",
 		func=google_search_serp,
 		description="A tool to search useful about current events and things on the Internet and return the search results with their URLs and summaries as a JSON formatted string.",
+		#return_direct=True
+		),
+		Tool(
+		name="Wikipedia_to_JSON_String",
+		func=wikipedia_to_json_string,
+		description="A tool to search for a query on Wikipedia and return the search results with their URLs and summaries as a JSON formatted string. The input to this tool should be a query.",
 		#return_direct=True
 		),
 	]
